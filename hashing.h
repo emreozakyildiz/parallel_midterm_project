@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TABLE_SIZE 49222
+#define TABLE_SIZE 5000
 
 struct node {
     char key[50];
