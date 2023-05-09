@@ -2,72 +2,55 @@
 #include <stdlib.h>
 #include <locale.h>
 #include <stdbool.h>
+#include <time.h>
 #include "hashing.h"
 
 #define ROWS 4
 #define COLS 4
 #define MAX_LEN 10
 
-#define MAX_WORD_LENGTH 20
-
 char matrix[ROWS][COLS];
 char string[MAX_LEN + 1];
 int visited[ROWS][COLS];
 
-char** get_matrix_from_file(void);
+char** get_matrix_from_file(char* filename);
 void print_matrix(char **matrix);
-void initVisited(bool** visited);
+bool** initVisited();
 void findStrings(char** matrix, int row, int col, int len);
-
-struct node* table[TABLE_SIZE];
-char found[20];
 
 int main() {
     setlocale(LC_ALL, "tr_TR");
 
-    char** matrix = get_matrix_from_file();
+    char** matrix = get_matrix_from_file("matrix_2.ini");
     print_matrix(matrix);
 
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        table[i] = NULL;
-    }
-    FILE* fp;
-    if (fopen_s(&fp, "sozluk.txt", "r") != 0) {
-        printf("Error: Unable to open file\n");
-        return 1;
-    }
+    init_table();
 
-    char word[MAX_WORD_LENGTH];
+    load("sozluk.txt");
 
-    while (fgets(word, sizeof(word), fp) != NULL) {
-        word[strcspn(word, "\n")] = '\0';
-        insert(table, word, 1);
-    }
-    
-    fclose(fp);
+    bool** visited = initVisited();
 
-    bool** visited = (bool**)malloc(ROWS * sizeof(bool*));
-    for (int i = 0; i < 8; i++)
-        visited[i] = (bool*)malloc(COLS * sizeof(bool));
-
-    initVisited(visited);
-
+    clock_t start = clock();
 
     int m, n;
 
-//#pragma omp parallel for num_threads(4) shared(matrix, table) private(m, n, visited, string)
-    for (m = 0; m < ROWS; m++) {
-        for (n = 0; n < COLS; n++) {
-            int length = 0;
-            findStrings(matrix, m, n, length);
+#pragma omp parallel for private(m, n, visited, string) shared(matrix, table) num_threads(4)
+        for (m = 0; m < ROWS; m++) {
+            for (n = 0; n < COLS; n++) {
+                //printf("\nresults for matrix[%d][%d]=%c:\n\n", m, n, matrix[m][n]);
+                int length = 0;
+                findStrings(matrix, m, n, length);
+            }
         }
-    }
+    
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Completion time: %.2f seconds.", time_spent);
     return 0;
 }
 
-char** get_matrix_from_file() {
+char** get_matrix_from_file(char* filename) {
     FILE* fp;
-    char* filename = "matrix.ini";
     int rows, cols, i, j;
 
     fopen_s(&fp, filename, "r");
@@ -79,10 +62,10 @@ char** get_matrix_from_file() {
     }
     else {
         fscanf_s(fp, "%d %d ", &rows, &cols);
+        rows = ROWS;
+        cols = COLS;
         printf("%d,%d boyutunda matris olusturuldu.\n", rows, cols);
     }
-    rows = ROWS;
-    cols = COLS;
 
     char** matrix = (char**)malloc(rows * sizeof(char*));
     for (i = 0; i < rows; i++)
@@ -117,22 +100,28 @@ void print_matrix(char** matrix) {
     rows = ROWS;
     cols = COLS;
 
+    printf("\n");
     for (i = 0; i < rows; i++) {
         for (j = 0; j < cols; j++) {
             printf("%c ", matrix[i][j]);
         }
         printf("\n");
     }
+    printf("\n");
     fclose(fp);
 }
 
-void initVisited(bool** visited) {
+bool** initVisited() {
+    bool** visited = (bool**)malloc(ROWS * sizeof(bool*));
+    for (int i = 0; i < 8; i++)
+        visited[i] = (bool*)malloc(COLS * sizeof(bool));
+
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
             visited[i][j] = false;
         }
     }
-    return;
+    return visited;
 }
 
 void findStrings(char** matrix, int row, int col, int len) {
@@ -140,13 +129,17 @@ void findStrings(char** matrix, int row, int col, int len) {
         return;
     }
     visited[row][col] = 1;
+
+
     string[len] = matrix[row][col];
     string[len + 1] = '\0';
-
+    
     if (get(table, string))
-        printf("%s found from thread no: %d\n", string, omp_get_thread_num());
+        printf("-> %s found from thread no: %d\n", string, omp_get_thread_num());
+    
 
     int i, j;
+
     for (i = row - 1; i <= row + 1; i++) {
         for (j = col - 1; j <= col + 1; j++) {
             if (i >= 0 && i < ROWS && j >= 0 && j < COLS && !visited[i][j]) {
