@@ -12,6 +12,7 @@ struct node {
 
 struct node* table[TABLE_SIZE];
 
+//djb2 Algorithm by Daniel J. Bernstein
 int hash(const char* str) {
     unsigned long hash = 5381;
     int c;
