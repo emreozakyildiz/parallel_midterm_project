@@ -21,12 +21,12 @@ void findStrings(char** matrix, int row, int col, int len);
 int main() {
     setlocale(LC_ALL, "tr_TR");
 
-    char** matrix = get_matrix_from_file("matrix_2.ini");
+    char** matrix = get_matrix_from_file("resources/matrix_2.ini");
     print_matrix(matrix);
 
     init_table();
 
-    load("sozluk.txt");
+    load("resources/sozluk.txt");
 
     bool** visited = initVisited();
 
@@ -83,7 +83,7 @@ char** get_matrix_from_file(char* filename) {
 
 void print_matrix(char** matrix) {
     FILE* fp;
-    char* filename = "matrix.ini";
+    char* filename = "resources/matrix.ini";
     int rows, cols, i, j;
 
     fopen_s(&fp, filename, "r");
